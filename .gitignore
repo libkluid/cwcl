@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# uv / virtualenv
+.venv/
+
+# dlt pipeline state and local destinations
+.dlt/
+*.duckdb
+*.duckdb.wal
+
+# Hugo build output and cache
+site/public/
+site/resources/
+.hugo_build.lock
+
+# generated Hugo content (keep the section index)
+site/content/jobs/*.md
+!site/content/jobs/_index.md

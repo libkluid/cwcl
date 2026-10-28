@@ -1,0 +1,7 @@
+baseURL = "https://example.github.io/"
+title = "창원 청소 일자리"
+buildFuture = true
+disableKinds = ["taxonomy", "term", "RSS", "sitemap"]
+
+[params]
+  description = "창원시 관공서·공공기관 직접 채용 청소 일자리 모음"

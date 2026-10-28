@@ -1,17 +1,27 @@
 [project]
-name = "stage"
+name = "changwon-jobs"
 version = "0.1.0"
-description = "Add your description here"
+description = "Collect direct-hire public-sector cleaning jobs in 창원시 and build a static site."
 readme = "README.md"
 authors = [
     { name = "libkluid", email = "kluid.me@yahoo.com" }
 ]
-requires-python = ">=3.15"
-dependencies = []
+requires-python = ">=3.13"
+dependencies = [
+    "dlt>=1.31.0",
+    "duckdb>=2.0.0",
+    "httpx>=0.28.1",
+    "pyyaml>=6.0.3",
+    "selectolax>=1.0.2",
+]
 
 [project.scripts]
-stage = "stage:main"
+jobs = "jobs:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "jobs"
+module-root = "src"

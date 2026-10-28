@@ -1,0 +1,38 @@
+:root { color-scheme: light dark; }
+
+body {
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.site-header { border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+.site-header a { text-decoration: none; color: inherit; }
+
+h1 { font-size: 1.5rem; }
+.meta, .site-footer { color: #666; font-size: .875rem; }
+
+table.jobs { width: 100%; border-collapse: collapse; margin-top: 16px; }
+table.jobs th, table.jobs td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  vertical-align: top;
+}
+table.jobs th { font-size: .8rem; color: #666; }
+
+a { color: #0b6bcb; }
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f6f6f6;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre { background: #1e1e1e; }
+  .site-header, table.jobs th, table.jobs td { border-color: #333; }
+}

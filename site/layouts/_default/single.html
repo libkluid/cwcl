@@ -1,0 +1,10 @@
+{{ define "main" }}
+<p class="back"><a href="{{ "/jobs/" | relURL }}">← 목록</a></p>
+<h1>{{ .Title }}</h1>
+<p class="meta">
+  {{ .Params.source }}{{ with .Date }} · 게시 {{ .Format "2006-01-02" }}{{ end }}
+  {{ with .Params.closes_on }} · 마감 {{ . }}{{ end }}
+  {{ with .Params.source_url }} · <a href="{{ . }}" rel="noopener noreferrer">원문 보기</a>{{ end }}
+</p>
+<pre>{{ .Params.body }}</pre>
+{{ end }}

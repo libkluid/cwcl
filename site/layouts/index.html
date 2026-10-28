@@ -1,0 +1,6 @@
+{{ define "main" }}
+<h1>{{ site.Title }}</h1>
+{{ $jobs := sort (where site.RegularPages "Section" "jobs") "Date" "desc" }}
+<p class="meta">{{ len $jobs }}건 · 직접 채용 위주</p>
+{{ partial "job-table.html" $jobs }}
+{{ end }}

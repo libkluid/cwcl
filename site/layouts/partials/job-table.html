@@ -1,0 +1,16 @@
+<table class="jobs">
+  <thead>
+    <tr><th>게시일</th><th>마감일</th><th>제목</th><th>출처</th><th>원문</th></tr>
+  </thead>
+  <tbody>
+    {{ range . }}
+    <tr>
+      <td>{{ with .Date }}{{ .Format "2006-01-02" }}{{ end }}</td>
+      <td>{{ .Params.closes_on }}</td>
+      <td><a href="{{ .RelPermalink }}">{{ .Title }}</a></td>
+      <td>{{ .Params.source }}</td>
+      <td>{{ with .Params.source_url }}<a href="{{ . }}" rel="noopener noreferrer">원문</a>{{ end }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>

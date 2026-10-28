@@ -1,0 +1,80 @@
+name: collect-and-deploy
+
+# Refresh the dataset, rebuild the Hugo site, publish to GitHub Pages, and
+# commit the accumulated JSONL store back to the repo.
+# Requires: Settings → Pages → Build and deployment → Source = "GitHub Actions".
+
+on:
+  schedule:
+    # 09:00–19:00 KST (UTC+9), every 2 hours: 00,02,04,06,08,10 UTC.
+    - cron: "0 0,2,4,6,8,10 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # commit the accumulated data/jobs.jsonl store
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Sync dataset + render Hugo content
+        run: uv run jobs build --max-pages 3 --detail-delay 0.5 --retention-days 180
+
+      - name: Persist dataset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/jobs.jsonl
+          if git diff --cached --quiet; then
+            echo "No store changes"
+          else
+            git commit -m "chore(data): update job store [skip ci]"
+            git push
+          fi
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "latest"
+          extended: false
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site
+        run: hugo --source site --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

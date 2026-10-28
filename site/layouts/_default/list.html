@@ -1,0 +1,6 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ $jobs := sort .Pages "Date" "desc" }}
+<p class="meta">{{ len $jobs }}건</p>
+{{ partial "job-table.html" $jobs }}
+{{ end }}
