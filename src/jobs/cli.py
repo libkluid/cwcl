@@ -29,6 +29,7 @@ from .merge import sync
 from .page import write_content
 
 DEFAULT_STORE = "data/jobs.jsonl"
+DEFAULT_SEEN = "data/seen.txt"
 DEFAULT_CONTENT_DIR = "site/content/jobs"
 
 
@@ -67,6 +68,11 @@ def _add_sync_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--store", default=DEFAULT_STORE, help=f"JSONL store (default: {DEFAULT_STORE}).")
     parser.add_argument(
+        "--seen",
+        default=DEFAULT_SEEN,
+        help=f"id ledger for incremental skip (default: {DEFAULT_SEEN}).",
+    )
+    parser.add_argument(
         "--retention-days",
         type=int,
         default=180,
@@ -75,6 +81,11 @@ def _add_sync_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pipeline-name", default="changwon_jobs", help="dlt pipeline name.")
     parser.add_argument("--dataset-name", default="raw", help="dlt dataset/schema name.")
     parser.add_argument("--destination", default="duckdb", help="dlt destination (default: duckdb).")
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="re-crawl every page, ignoring ids already in the store (default: incremental).",
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -117,6 +128,18 @@ def _sync_kwargs(args: argparse.Namespace) -> dict:
 
 def _run_sync(args: argparse.Namespace) -> int:
     kwargs = _sync_kwargs(args)
+    existing = store.load(args.store)
+    seen = store.load_ids(args.seen)
+    encountered: set[str] = set()
+    kwargs["encountered"] = encountered
+
+    if not args.full and (existing or seen):
+        kwargs["known_ids"] = set(existing) | seen
+        print(
+            f"Known {len(existing)} stored + {len(seen)} ledger ids "
+            "— fetching only new (use --full to re-crawl)"
+        )
+
     print(f"Syncing → sources={', '.join(kwargs['sources'])}")
     docs = sync(
         pipeline_name=args.pipeline_name,
@@ -125,10 +148,11 @@ def _run_sync(args: argparse.Namespace) -> int:
         **kwargs,
     )
 
-    existing = store.load(args.store)
     merged = store.upsert(existing, docs, retention_days=args.retention_days or None)
     total = store.save(args.store, merged)
-    print(f"Store: fetched {len(docs)}, kept {total} → {args.store}")
+    ledger_ids = set(existing) | seen | encountered
+    ledger = store.save_ids(args.seen, ledger_ids)
+    print(f"Store: fetched {len(docs)} new, kept {total} → {args.store} (ledger {ledger})")
     return 0
 
 

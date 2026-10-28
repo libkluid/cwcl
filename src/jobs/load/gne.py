@@ -36,7 +36,10 @@ def rows(
     job_detail: str = "청소원",
     max_pages: int = 3,
     delay: float = 1.0,
+    skip_keys: set[int] | None = None,
+    seen_keys: set[int] | None = None,
 ) -> Iterator[dict]:
+    skip = skip_keys or set()
     params_base = {
         "regionSearch": region,
         "jobSearch": job,
@@ -51,7 +54,14 @@ def rows(
             page_rows = _parse_rows(resp.text, region)
             if not page_rows:
                 break
-            yield from page_rows
+            if seen_keys is not None:
+                seen_keys.update(row["key"] for row in page_rows)
+            fresh = [row for row in page_rows if row["key"] not in skip]
+            yield from fresh
+            # Newest-first list: a page where every row is already known means
+            # older pages are known too, so stop paginating.
+            if skip and not fresh:
+                break
             if page < max_pages:
                 time.sleep(delay)
 

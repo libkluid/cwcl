@@ -23,7 +23,8 @@ src/jobs/
     └── hugo.py      # write_content(): 문서별 markdown 프론트매터 생성
 
 site/         # Hugo 사이트 (page 레이어 출력)
-data/jobs.jsonl  # 누적 스토어 (커밋 대상)
+data/jobs.jsonl  # 누적 스토어 (표시용, 보존기간 적용, 커밋 대상)
+data/seen.txt    # id 원장 (지금까지 수집한 모든 id, 커밋 대상)
 ```
 
 문서 스키마: `{id, source, title, posted_on, closes_on, url, body}`.
@@ -40,6 +41,15 @@ load (목록+상세)  →  merge (정규화)  →  dlt/DuckDB(임시)  →  stor
   사이트는 이 파일에서 렌더한다.
 - `posted_on` 기준 보존기간(기본 180일)으로 오래된 항목을 정리한다.
 - 각 공고의 게시일(`posted_on`)과 마감일(`closes_on`)을 사이트에 함께 표시한다.
+
+## 증분 수집
+매 실행이 전체를 다시 긁지 않도록 이미 수집한 공고는 건너뛴다.
+- 목록에서 이미 아는 id는 **상세 요청을 생략**하고, 한 페이지가 전부 아는 공고면
+  페이지네이션을 **중단**한다(목록이 최신순이라 성립).
+- 보존기간으로 `data/jobs.jsonl`에서 잘려나간 id도 `data/seen.txt`(id 원장)에 남아
+  계속 skip 된다. 원장은 한 번 본 **모든 목록 행의 id**를 담아, 청소 공고가 섞여
+  있지 않은 changwon 페이지도 조기 종료된다.
+- 강제 전체 재수집: `--full`.
 
 ## 소스별 필터
 - `gne`: `region=창원` + 세부분류 `청소원`
@@ -64,16 +74,16 @@ uv run jobs build --max-pages 3
 ```
 
 주요 옵션: `--sources`, `--max-pages`, `--delay`, `--detail-delay`, `--limit`,
-`--region`, `--keyword`, `--gojobs-areas`, `--match`, `--store`,
-`--retention-days`.
+`--region`, `--keyword`, `--gojobs-areas`, `--match`, `--store`, `--seen`,
+`--retention-days`, `--full`.
 
 ## GitHub Actions
 
 `.github/workflows/collect-and-deploy.yml` 이 매일 **09:00~19:00 KST 사이 2시간마다**
 (09, 11, 13, 15, 17, 19시) 및 수동/push 시:
 
-1. `jobs build` 로 수집·정규화·Hugo 콘텐츠 생성
-2. `data/jobs.jsonl` 변경분을 `[skip ci]` 로 커밋
+1. `jobs build` 로 수집·정규화·Hugo 콘텐츠 생성 (증분: 새 공고만)
+2. `data/jobs.jsonl`·`data/seen.txt` 변경분을 `[skip ci]` 로 커밋
 3. `hugo` 빌드 후 GitHub Pages 로 배포
 
 사전 설정: 저장소 **Settings → Pages → Source = "GitHub Actions"**.

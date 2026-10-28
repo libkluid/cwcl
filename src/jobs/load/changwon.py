@@ -35,7 +35,10 @@ def rows(
     max_pages: int | None = 5,
     delay: float = 10.0,
     match: tuple[str, ...] | None = DEFAULT_MATCH,
+    skip_keys: set[int] | None = None,
+    seen_keys: set[int] | None = None,
 ) -> Iterator[dict]:
+    skip = skip_keys or set()
     with client(referer=PAGE_URL) as http:
         page = 1
         while max_pages is None or page <= max_pages:
@@ -45,7 +48,11 @@ def rows(
             page_rows, total_pages = _parse_rows(resp.text)
             if not page_rows:
                 break
+            if seen_keys is not None:
+                seen_keys.update(row["key"] for row in page_rows)
             for row in page_rows:
+                if row["key"] in skip:
+                    continue
                 if match is None:
                     yield row
                     continue
@@ -54,6 +61,9 @@ def rows(
                 )
                 if any(needle in haystack for needle in match):
                     yield row
+            # Newest-first list: stop once a whole page is already known.
+            if skip and all(row["key"] in skip for row in page_rows):
+                break
             if total_pages is not None and page >= total_pages:
                 break
             page += 1

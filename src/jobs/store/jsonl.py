@@ -77,3 +77,20 @@ def read_documents(path: str | Path) -> list[dict]:
     docs = list(load(path).values())
     docs.sort(key=lambda d: (d.get("posted_on") or "", d.get("title") or ""), reverse=True)
     return docs
+
+
+def load_ids(path: str | Path) -> set[str]:
+    """Read a newline-separated id ledger (missing file -> empty)."""
+    file = Path(path)
+    if not file.exists():
+        return set()
+    return {line.strip() for line in file.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def save_ids(path: str | Path, ids: set[str]) -> int:
+    """Write the id ledger, sorted, and return its size."""
+    file = Path(path)
+    file.parent.mkdir(parents=True, exist_ok=True)
+    ordered = sorted(ids)
+    file.write_text("\n".join(ordered) + ("\n" if ordered else ""), encoding="utf-8")
+    return len(ordered)

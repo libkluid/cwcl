@@ -88,8 +88,11 @@ def rows(
     areas: tuple[str, ...] = DEFAULT_AREAS,
     max_pages: int = 10,
     delay: float = 1.0,
+    skip_keys: set[int] | None = None,
+    seen_keys: set[int] | None = None,
 ) -> Iterator[dict]:
     seen: set[int] = set()
+    skip = skip_keys or set()
     with client(referer=WARMUP_URL) as http:
         if fetch(http, "GET", WARMUP_URL) is None:
             return
@@ -117,11 +120,16 @@ def rows(
                 page_rows = _parse_rows(resp.text)
                 if not page_rows:
                     break
+                if seen_keys is not None:
+                    seen_keys.update(row["key"] for row in page_rows)
                 for row in page_rows:
-                    if row["key"] in seen:
+                    if row["key"] in skip or row["key"] in seen:
                         continue
                     seen.add(row["key"])
                     yield row
+                # Newest-first list: stop once a whole page is already known.
+                if skip and all(row["key"] in skip for row in page_rows):
+                    break
                 if page < max_pages:
                     time.sleep(delay)
 

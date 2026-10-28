@@ -24,10 +24,16 @@ def _row_kwargs(
     keyword: str,
     gojobs_areas: tuple[str, ...] | None,
     changwon_match: tuple[str, ...] | None,
+    skip_keys: set[int] | None,
+    seen_keys: set[int] | None,
 ) -> dict:
     kwargs: dict = {"max_pages": max_pages}
     if delay is not None:
         kwargs["delay"] = delay
+    if skip_keys:
+        kwargs["skip_keys"] = skip_keys
+    if seen_keys is not None:
+        kwargs["seen_keys"] = seen_keys
     if name == "gne":
         kwargs["region"] = region
     elif name == "gojobs":
@@ -38,6 +44,21 @@ def _row_kwargs(
         if changwon_match is not None:
             kwargs["match"] = changwon_match
     return kwargs
+
+
+def _skip_keys(name: str, known_ids: set[str] | None) -> set[int] | None:
+    """Source-local key set for documents already in the store."""
+    if not known_ids:
+        return None
+    prefix = f"{name}:"
+    keys: set[int] = set()
+    for doc_id in known_ids:
+        if doc_id.startswith(prefix):
+            try:
+                keys.add(int(doc_id[len(prefix):]))
+            except ValueError:
+                continue
+    return keys or None
 
 
 def iter_documents(
@@ -51,11 +72,16 @@ def iter_documents(
     keyword: str = "청소",
     gojobs_areas: tuple[str, ...] | None = None,
     changwon_match: tuple[str, ...] | None = None,
+    known_ids: set[str] | None = None,
+    encountered: set[str] | None = None,
 ) -> Iterator[dict]:
     """Yield normalised documents for each selected source.
 
-    ``delay=None`` keeps each source's list-page default; ``detail_delay`` is the
-    pause between detail requests; ``limit`` caps the number of documents emitted.
+    ``known_ids`` are document ids already in the store; matching list rows are
+    skipped (no detail request) and pagination stops once a page is fully known,
+    so repeat runs only fetch what is new. Every list-row key seen is added to
+    ``encountered`` (as ``<source>:<key>``) so mixed pages can also stop early.
+    ``delay=None`` keeps each source's list-page default; ``limit`` caps output.
     """
     selected = tuple(s for s in sources if s in SOURCES)
     emitted = 0
@@ -63,6 +89,7 @@ def iter_documents(
     with client() as http:
         for name in selected:
             module = SOURCES[name]
+            local_seen: set[int] = set()
             kwargs = _row_kwargs(
                 name,
                 max_pages=max_pages,
@@ -71,6 +98,8 @@ def iter_documents(
                 keyword=keyword,
                 gojobs_areas=gojobs_areas,
                 changwon_match=changwon_match,
+                skip_keys=_skip_keys(name, known_ids),
+                seen_keys=local_seen if encountered is not None else None,
             )
             for row in module.rows(**kwargs):
                 key = row.get("key")
@@ -96,3 +125,6 @@ def iter_documents(
                 if limit is not None and emitted >= limit:
                     return
                 time.sleep(detail_delay)
+
+            if encountered is not None:
+                encountered.update(f"{name}:{key}" for key in local_seen)
